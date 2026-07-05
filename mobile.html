@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vignus Mobile Camera</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090D1A;
+      --panel-glass: rgba(15, 23, 42, 0.75);
+      --border-glass: rgba(255, 255, 255, 0.1);
+      --accent-live: #10B981;
+      --accent-stop: #EF4444;
+      --accent-primary: #3B82F6;
+      --text-light: #F8FAFC;
+      --text-muted: #94A3B8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-light);
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    #camera-preview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+      background-color: #000;
+    }
+
+    /* Screen Overlay UI */
+    .overlay-ui {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+      padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    }
+
+    .interactive {
+      pointer-events: auto;
+    }
+
+    /* Header Bar */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--panel-glass);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-glass);
+      padding: 8px 14px;
+      border-radius: 40px;
+      font-weight: 600;
+      font-size: 13px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+
+    .dot.live {
+      background: var(--accent-live);
+      box-shadow: 0 0 10px var(--accent-live);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.4; }
+      50% { opacity: 1; }
+      100% { opacity: 0.4; }
+    }
+
+    .slot-label {
+      background: var(--accent-primary);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Floating Stats (Top Right) */
+    .stats-card {
+      background: var(--panel-glass);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-glass);
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-self: flex-start;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    /* Controls Panel (Bottom) */
+    .controls-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      width: 100%;
+      align-items: center;
+      padding-bottom: 8px;
+    }
+
+    .quick-settings {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .circle-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: var(--panel-glass);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-glass);
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    }
+
+    .circle-btn.active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+    }
+
+    .circle-btn:active {
+      transform: scale(0.9);
+    }
+
+    /* Bottom Control Bar */
+    .action-bar {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      width: 100%;
+      max-width: 450px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    .selector-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .selector-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .custom-select {
+      background: var(--panel-glass);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-glass);
+      color: var(--text-light);
+      padding: 8px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      outline: none;
+    }
+
+    .stream-trigger-btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--accent-live);
+      border: 4px solid var(--text-light);
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .stream-trigger-btn.streaming {
+      background: var(--accent-stop);
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+      transform: scale(1.05);
+    }
+
+    .stream-trigger-btn:active {
+      transform: scale(0.9);
+    }
+
+    /* Error & Expiration States */
+    .screen-message {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-dark);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      text-align: center;
+    }
+
+    .msg-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    .msg-title {
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .msg-desc {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+      max-width: 400px;
+    }
+
+    .msg-btn {
+      background: var(--accent-primary);
+      color: #fff;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 30px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .msg-btn:hover {
+      background: #2563EB;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Video Stream element -->
+  <video id="camera-preview" autoplay muted playsinline></video>
+
+  <!-- Overlay UI controls -->
+  <div class="overlay-ui">
+    <!-- Top Row -->
+    <div class="header-bar">
+      <div class="status-badge">
+        <div class="dot" id="stream-dot"></div>
+        <span id="stream-status">STANDBY</span>
+        <span class="slot-label" id="cam-slot-label">CAM 1</span>
+      </div>
+      
+      <!-- Stream Stats -->
+      <div class="stats-card">
+        <div>Res: <span id="stat-res">--</span></div>
+        <div>FPS: <span id="stat-fps">--</span></div>
+        <div>Loss: <span id="stat-loss">0</span></div>
+        <div>Bitrate: <span id="stat-bitrate">0</span> kbps</div>
+      </div>
+    </div>
+
+    <!-- Bottom Controls -->
+    <div class="controls-container interactive">
+      <div class="quick-settings">
+        <!-- Audio Switcher -->
+        <button class="circle-btn active" id="audio-toggle" title="Toggle Mic">
+          🎙️
+        </button>
+        <!-- Camera Toggle -->
+        <button class="circle-btn" id="camera-flip" title="Flip Camera">
+          🔄
+        </button>
+        <!-- Torch Switcher -->
+        <button class="circle-btn" id="torch-toggle" style="display: none;" title="Toggle Flashlight">
+          💡
+        </button>
+      </div>
+
+      <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+        <!-- Resolution selector -->
+        <div class="selector-group">
+          <span class="selector-label">Res</span>
+          <select class="custom-select" id="resolution-select">
+            <option value="1080">1080p</option>
+            <option value="720" selected>720p</option>
+            <option value="480">480p</option>
+          </select>
+        </div>
+        <!-- FPS selector -->
+        <div class="selector-group">
+          <span class="selector-label">FPS</span>
+          <select class="custom-select" id="fps-select">
+            <option value="60">60</option>
+            <option value="30" selected>30</option>
+            <option value="24">24</option>
+            <option value="15">15</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="action-bar" style="justify-content: center;">
+        <!-- Big Streaming Button -->
+        <button class="stream-trigger-btn" id="stream-trigger" title="Start Live Streaming">
+          🔴
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link Expired / Error Block screen -->
+  <div class="screen-message" id="error-screen" style="display: none;">
+    <div class="msg-icon" id="error-icon">⚠️</div>
+    <div class="msg-title" id="error-title">Link Expired</div>
+    <div class="msg-desc" id="error-desc">
+      Your camera pairing link has expired (10-minute security limit) or is invalid. Please generate a new QR code in Vignus IRL Studio.
+    </div>
+    <button class="msg-btn" onclick="window.location.reload()">Retry</button>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const camIndex  = urlParams.get('cam') || '1';
+    const token     = urlParams.get('token');
+    const expires   = urlParams.get('expires');
+    const camKey    = `cam${camIndex}`;
+
+    // Elements
+    const previewEl    = document.getElementById('camera-preview');
+    const streamStatus = document.getElementById('stream-status');
+    const streamDot    = document.getElementById('stream-dot');
+    const slotLabel    = document.getElementById('cam-slot-label');
+    const triggerBtn   = document.getElementById('stream-trigger');
+    const flipBtn      = document.getElementById('camera-flip');
+    const audioBtn     = document.getElementById('audio-toggle');
+    const torchBtn     = document.getElementById('torch-toggle');
+    const resSelect    = document.getElementById('resolution-select');
+    const errorScreen  = document.getElementById('error-screen');
+    
+    // Stats
+    const statRes      = document.getElementById('stat-res');
+    const statFps      = document.getElementById('stat-fps');
+    const statLoss     = document.getElementById('stat-loss');
+    const statBitrate  = document.getElementById('stat-bitrate');
+
+    const fpsSelect    = document.getElementById('fps-select');
+
+    slotLabel.textContent = `CAM ${camIndex}`;
+
+    // State Variables
+    let localStream = null;
+    let isStreaming = false;
+    let peerConnection = null;
+    let currentFacingMode = 'environment'; // Default to rear camera
+    let audioEnabled = true;
+    let torchActive = false;
+    let statsInterval = null;
+
+    // Validate link expiration (10 min duration)
+    if (expires) {
+      const expTime = parseInt(expires);
+      if (Date.now() > expTime) {
+        showErrorScreen("Link Expired", "Tautan pairing kamera ini telah kedaluwarsa (batas keamanan 10 menit). Silakan generate QR Code baru di Vignus IRL Studio.");
+      }
+    }
+
+    function showErrorScreen(title, message) {
+      document.getElementById('error-title').textContent = title;
+      document.getElementById('error-desc').textContent = message;
+      errorScreen.style.display = 'flex';
+    }
+
+    // Request permissions and start preview
+    async function startPreview() {
+      try {
+        if (localStream) {
+          localStream.getTracks().forEach(t => t.stop());
+        }
+
+        const width = resSelect.value == '1080' ? 1920 : (resSelect.value == '720' ? 1280 : 854);
+        const height = resSelect.value == '1080' ? 1080 : (resSelect.value == '720' ? 720 : 480);
+
+        const fps = fpsSelect ? parseInt(fpsSelect.value) : 30;
+
+        const constraints = {
+          video: {
+            facingMode: currentFacingMode,
+            width: { ideal: width },
+            height: { ideal: height },
+            frameRate: { ideal: fps }
+          },
+          audio: audioEnabled
+        };
+
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        previewEl.srcObject = localStream;
+
+        // Check if torch/flashlight is supported
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+          const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
+          if (capabilities.torch) {
+            torchBtn.style.display = 'flex';
+          } else {
+            torchBtn.style.display = 'none';
+          }
+          
+          // Update resolution stats
+          const settings = videoTrack.getSettings();
+          statRes.textContent = `${settings.width}x${settings.height}`;
+        }
+      } catch (err) {
+        console.error("Camera access error:", err);
+        showErrorScreen("Akses Kamera Gagal", "Gagal mengakses kamera dan mikrofon HP Anda. Harap berikan izin akses kamera/mikrofon di browser.");
+      }
+    }
+
+    // Toggle Flashlight
+    async function toggleTorch() {
+      if (!localStream) return;
+      const track = localStream.getVideoTracks()[0];
+      if (!track) return;
+      
+      try {
+        torchActive = !torchActive;
+        await track.applyConstraints({
+          advanced: [{ torch: torchActive }]
+        });
+        torchBtn.classList.toggle('active', torchActive);
+      } catch (e) {
+        console.error("Torch error:", e);
+      }
+    }
+
+    // Flip Camera
+    flipBtn.addEventListener('click', () => {
+      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      torchActive = false;
+      torchBtn.classList.remove('active');
+      startPreview();
+    });
+
+    // Mute Audio
+    audioBtn.addEventListener('click', () => {
+      audioEnabled = !audioEnabled;
+      if (localStream) {
+        localStream.getAudioTracks().forEach(t => t.enabled = audioEnabled);
+      }
+      audioBtn.classList.toggle('active', audioEnabled);
+      audioBtn.textContent = audioEnabled ? '🎙️' : '🔇';
+    });
+
+    // Toggle Torch
+    torchBtn.addEventListener('click', toggleTorch);
+
+    // Settings Handlers
+    const handleSettingChange = () => {
+      if (isStreaming) {
+        stopStreaming().then(() => startPreview());
+      } else {
+        startPreview();
+      }
+    };
+    
+    if (resSelect) resSelect.addEventListener('change', handleSettingChange);
+    if (fpsSelect) fpsSelect.addEventListener('change', handleSettingChange);
+
+    // Trigger Stream
+    triggerBtn.addEventListener('click', () => {
+      if (isStreaming) {
+        stopStreaming();
+      } else {
+        startStreaming();
+      }
+    });
+
+    // WHIP streaming logic
+    async function startStreaming() {
+      if (isStreaming) return;
+      
+      try {
+        isStreaming = true;
+        triggerBtn.classList.add('streaming');
+        triggerBtn.textContent = '⏹️';
+        streamStatus.textContent = 'STREAMING';
+        streamDot.classList.add('live');
+
+        // Create Peer Connection
+        peerConnection = new RTCPeerConnection({
+          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
+
+        // Add tracks
+        localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
+        });
+
+        // Handle stats polling
+        startStatsPolling();
+
+        // Create offer
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        // MediaMTX WHIP endpoint proxied via our port 3000 server
+        const whipUrl = `/api/webrtc/${camKey}/whip`;
+
+        const response = await fetch(whipUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/sdp',
+            'Bypass-Tunnel-Reminder': 'true'
+          },
+          body: peerConnection.localDescription.sdp
+        });
+
+        if (response.ok) {
+          const answerSdp = await response.text();
+          await peerConnection.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+          console.log("WHIP WebRTC session established successfully!");
+        } else {
+          throw new Error(`MediaMTX WHIP returned error: ${response.status}`);
+        }
+      } catch (err) {
+        console.error("WHIP stream failed:", err);
+        stopStreaming();
+        alert("Gagal mengirim stream ke Vignus Studio. Pastikan HP dan PC berada di jaringan Tailscale yang sama.");
+      }
+    }
+
+    async function stopStreaming() {
+      isStreaming = false;
+      triggerBtn.classList.remove('streaming');
+      triggerBtn.textContent = '🔴';
+      streamStatus.textContent = 'STANDBY';
+      streamDot.classList.remove('live');
+      
+      if (statsInterval) {
+        clearInterval(statsInterval);
+        statsInterval = null;
+      }
+
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+
+      statFps.textContent = '--';
+      statLoss.textContent = '0';
+      if (statBitrate) statBitrate.textContent = '0';
+    }
+
+    // Stats polling
+    function startStatsPolling() {
+      let prevBytes = 0;
+      let prevTime = 0;
+      statsInterval = setInterval(async () => {
+        if (!peerConnection || peerConnection.connectionState === 'closed') return;
+        try {
+          const stats = await peerConnection.getStats();
+          stats.forEach(report => {
+            if (report.type === 'outbound-rtp' && report.kind === 'video') {
+              if (report.framesPerSecond) {
+                statFps.textContent = Math.round(report.framesPerSecond);
+              }
+              if (report.bytesSent) {
+                if (prevBytes > 0 && prevTime > 0) {
+                  const bytesDiff = report.bytesSent - prevBytes;
+                  const timeDiff = report.timestamp - prevTime; // ms
+                  if (timeDiff > 0) {
+                    const bitrateKbps = Math.round((bytesDiff * 8) / timeDiff);
+                    if (statBitrate) statBitrate.textContent = bitrateKbps;
+                  }
+                }
+                prevBytes = report.bytesSent;
+                prevTime = report.timestamp;
+              }
+            }
+            if (report.type === 'inbound-rtp' && report.packetsLost !== undefined) {
+              statLoss.textContent = report.packetsLost;
+            }
+          });
+        } catch (e) {}
+      }, 2000);
+    }
+
+    // Initialize Page
+    startPreview();
+  </script>
+</body>
+</html>

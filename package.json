@@ -1,0 +1,29 @@
+{
+  "name": "vgstream",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:vite": "vite",
+    "dev:electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "build:vite": "vite build",
+    "build:electron": "electron-builder",
+    "build": "npm run build:vite && npm run build:electron"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3",
+    "vite": "^5.0.0",
+    "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "hls.js": "^1.6.16",
+    "localtunnel": "^2.0.2",
+    "nat-upnp": "^1.1.1",
+    "selfsigned": "^5.5.0"
+  }
+}

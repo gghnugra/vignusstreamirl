@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vignus IRL Studio</title>
+    <!-- Expanded Content Security Policy to support google fonts and cdnjs qrious library -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:* https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com data: blob: srt:">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css" />
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js" referrerpolicy="no-referrer"></script>
+  </head>
+  <body>
+    <!-- View A: Auth Screen -->
+    <div id="auth-view">
+      <div class="auth-card">
+        <div class="auth-header">
+          <h2>Vignus IRL Studio</h2>
+          <p>Multi-Protocol Broadcast Stream Hub</p>
+        </div>
+        <div class="auth-tabs">
+          <button class="active" id="tab-login">Login</button>
+          <button id="tab-register">Register</button>
+        </div>
+        <div class="auth-form">
+          <input type="email" id="email" placeholder="Email Address" value="broadcaster@vignus.live" />
+          <input type="password" id="password" placeholder="Password" value="password123" />
+          <button id="login-btn" class="btn-primary">Sign In</button>
+          <p id="auth-error" class="error-msg" style="display: none;"></p>
+        </div>
+        <div class="auth-footer">
+          <p>Local Mock Session persistence enabled</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- View B: Main Dashboard -->
+    <div id="dashboard-view" style="display: none;">
+      <!-- Sidebar -->
+      <div id="sidebar">
+        <!-- Profile -->
+        <div class="profile-header">
+          <div class="user-info">
+            <span class="user-label">Logged in as:</span>
+            <span id="user-email">user@example.com</span>
+          </div>
+          <span id="tier-badge" class="badge badge-free">FREE TIER</span>
+        </div>
+
+        <!-- Tailscale Status Panel -->
+        <div class="panel tailscale-panel">
+          <h3>Tailscale Connection</h3>
+          <div id="tailscale-status-card" class="status-card-disconnected">
+            <div class="status-card-header">
+              <span class="status-indicator-dot" id="ts-dot"></span>
+              <span id="ts-status-text" class="status-bold">Detecting...</span>
+            </div>
+            <p id="ts-ip-text" class="mono-text">---.---.---.---</p>
+          </div>
+          <p id="ts-warning-tip" class="tip-warning" style="display: none;">
+            ⚠️ Tailscale terputus! Kamera seluler tidak akan bisa terhubung ke PC ini.
+          </p>
+        </div>
+        
+        <!-- Camera Pairing & Ingest Configuration -->
+        <div class="panel">
+          <h3>Camera Ingest & Pairing</h3>
+          <div class="input-group">
+            <select id="pairing-cam-select" style="margin-bottom: 0;">
+              <option value="1">Camera 1 (Active)</option>
+              <option value="2" class="pro-locked">Camera 2</option>
+              <option value="3" class="pro-locked">Camera 3</option>
+              <option value="4" class="pro-locked">Camera 4</option>
+              <option value="5" class="pro-locked">Camera 5</option>
+            </select>
+          </div>
+
+          <!-- Protocol Selection Tabs -->
+          <div class="protocol-tabs">
+            <button class="active" data-proto="web">Web Cam</button>
+            <button data-proto="rtmp">RTMP</button>
+            <button data-proto="srt">SRT</button>
+          </div>
+
+          <!-- Web Camera Pairing Mode -->
+          <div id="pairing-content-web" class="pairing-sub-content">
+            <div class="qr-container">
+              <canvas id="pairing-qr"></canvas>
+            </div>
+            <div class="input-group">
+              <input type="text" readonly value="" id="pairing-web-url" placeholder="Web URL" />
+              <button class="btn-copy" data-copy="pairing-web-url">Copy</button>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+              <button id="btn-regenerate-link" class="btn-secondary" style="flex: 1; font-size: 12px; padding: 6px;">
+                🔄 Regenerate
+              </button>
+            </div>
+            <p class="tip-info">
+              💡 Scan QR dengan browser HP Anda. Link ini berlaku 10 menit.
+            </p>
+          </div>
+
+          <!-- RTMP Pairing Mode -->
+          <div id="pairing-content-rtmp" class="pairing-sub-content" style="display: none;">
+            <div class="endpoint-item">
+              <label>RTMP Server URL</label>
+              <div class="input-group">
+                <input type="text" readonly value="" id="pairing-rtmp-url" />
+                <button class="btn-copy" data-copy="pairing-rtmp-url">Copy</button>
+              </div>
+            </div>
+            <div class="endpoint-item">
+              <label>Stream Key</label>
+              <div class="input-group">
+                <input type="text" readonly value="" id="pairing-rtmp-key" />
+                <button class="btn-copy" data-copy="pairing-rtmp-key">Copy</button>
+              </div>
+            </div>
+            <p class="tip-info">
+              💡 Gunakan di IRL Pro, Larix, atau Prism Live.
+            </p>
+          </div>
+
+          <!-- SRT Pairing Mode -->
+          <div id="pairing-content-srt" class="pairing-sub-content" style="display: none;">
+            <div class="endpoint-item">
+              <label>🔗 Full SRT URL (Salin langsung ke IRL Pro)</label>
+              <div class="input-group">
+                <input type="text" readonly value="" id="pairing-srt-url" style="font-size: 11px;" />
+                <button class="btn-copy" data-copy="pairing-srt-url">Copy</button>
+              </div>
+            </div>
+            <hr style="border: none; border-top: 1px solid var(--bg-panel-hover); margin: 8px 0;">
+            <p style="font-size: 10px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; font-weight: 600;">Atau isi manual di IRL Pro:</p>
+            <div class="endpoint-item">
+              <label>Host / Server</label>
+              <div class="input-group">
+                <input type="text" readonly value="" id="pairing-srt-host" />
+                <button class="btn-copy" data-copy="pairing-srt-host">Copy</button>
+              </div>
+            </div>
+            <div class="endpoint-item">
+              <label>Port</label>
+              <div class="input-group">
+                <input type="text" readonly value="8890" id="pairing-srt-port" />
+                <button class="btn-copy" data-copy="pairing-srt-port">Copy</button>
+              </div>
+            </div>
+            <div class="endpoint-item">
+              <label>Stream ID</label>
+              <div class="input-group">
+                <input type="text" readonly value="" id="pairing-srt-id" />
+                <button class="btn-copy" data-copy="pairing-srt-id">Copy</button>
+              </div>
+            </div>
+
+            <p class="tip-info">
+              📱 <strong>Cara di IRL Pro:</strong><br>
+              Settings → SRT → Paste full URL di atas, atau isi manual: Host, Port 8890, StreamID <code>publish:camX</code>. <strong>Passphrase/Password: KOSONGKAN SAJA</strong> (tidak diperlukan lagi).
+            </p>
+          </div>
+        </div>
+
+        <!-- OBS Output Panel -->
+        <div class="panel">
+          <h3>OBS Widget Integration</h3>
+          <div class="input-group">
+            <select id="obs-cam-select" style="margin-bottom: 0;">
+              <option value="1">Cam 1</option>
+              <option value="2" class="pro-locked">Cam 2</option>
+              <option value="3" class="pro-locked">Cam 3</option>
+              <option value="4" class="pro-locked">Cam 4</option>
+              <option value="5" class="pro-locked">Cam 5</option>
+            </select>
+          </div>
+          <div class="input-group" style="margin-top: 8px;">
+            <input type="text" readonly value="" id="obs-url" />
+            <button class="btn-copy" data-copy="obs-url">Copy</button>
+          </div>
+          <p class="tip-info">
+            💡 Tambahkan sebagai "Browser Source" di OBS. Latar belakang bersifat transparan secara bawaan.
+          </p>
+        </div>
+
+        <!-- Upgrade Banner -->
+        <div id="upsell-banner" class="banner">
+          <p>Unlock 5 Cameras & Overlays</p>
+          <button id="upgrade-btn" class="btn-upgrade">Upgrade to Pro</button>
+        </div>
+      </div>
+
+      <!-- Main Panel View -->
+      <div id="main-content">
+        <!-- Top Toolbar -->
+        <div id="top-bar">
+          <div class="main-title">
+            <h1>Vignus IRL Studio Dashboard</h1>
+          </div>
+          <div class="toolbar-actions">
+            <button id="add-cam-btn" class="btn-primary-small pro-locked">Add Camera</button>
+            <button id="overlay-settings-btn" class="btn-secondary pro-locked">Overlay Controls</button>
+            <button id="logout-btn" class="btn-secondary">Logout</button>
+            
+            <!-- Mock test control -->
+            <select id="mock-tier-select" class="mock-selector">
+              <option value="free">Test: Free Tier</option>
+              <option value="pro">Test: Pro Tier</option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- Video Grid Container -->
+        <div id="video-grid">
+          <!-- Dynamically populated video cards -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Overlay Configuration Modal (Pro Feature) -->
+    <div id="overlay-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>Overlay Configuration <span class="badge badge-pro">PRO ONLY</span></h2>
+          <button class="modal-close" id="overlay-modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group-toggle">
+            <label class="switch">
+              <input type="checkbox" id="overlay-text-enabled">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Enable Text Overlay</span>
+          </div>
+          <div class="form-group">
+            <label>Text Content</label>
+            <input type="text" id="overlay-text-content" placeholder="e.g. Vignus Broadcast Camera" />
+          </div>
+
+          <div class="form-group-toggle">
+            <label class="switch">
+              <input type="checkbox" id="overlay-clock-enabled">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Enable Clock (WIB / Local Time)</span>
+          </div>
+
+          <div class="form-group-toggle">
+            <label class="switch">
+              <input type="checkbox" id="overlay-watermark-enabled">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Enable Watermark / Logo</span>
+          </div>
+          <div class="form-group">
+            <label>Watermark Image URL</label>
+            <input type="text" id="overlay-watermark-url" placeholder="https://vignus.live/logo.png (or leave empty for default)" />
+          </div>
+
+          <div class="form-group-toggle">
+            <label class="switch">
+              <input type="checkbox" id="overlay-html-enabled">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Enable Custom HTML Overlay</span>
+          </div>
+          <div class="form-group">
+            <label>HTML Code</label>
+            <textarea id="overlay-html-content" rows="4" placeholder="<div style='color: yellow;'>CUSTOM OVERLAY</div>"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="overlay-modal-cancel">Cancel</button>
+          <button class="btn-primary" id="overlay-modal-save" style="width: auto; min-width: 100px;">Save Overlays</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Module Script -->
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
